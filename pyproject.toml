@@ -6,7 +6,17 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "automation-server-client",
+    "odk-tools",
+    "aiofiles",
+    "azure-identity",
+    "beautifulsoup4",
+    "msgraph-sdk",
+    "kmd-nexus-client",
+    "openpyxl>=3.1.5",
+    "ruff>=0.15.7",
 ]
 
 [tool.uv.sources]
 automation-server-client = { git = "https://github.com/odense-rpa/automation-server-client.git", tag = "v0.2.1" }
+odk-tools = { git = "https://github.com/odense-rpa/odk-tools.git" }
+kmd-nexus-client = { git = "https://github.com/odense-rpa/nexus-client.git" }
