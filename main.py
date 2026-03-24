@@ -26,6 +26,14 @@ async def populate_queue(workqueue: Workqueue):
     mails = await mail_service.check_inbox_messages(limit=10)
     print(f"Found {len(mails)} emails in inbox")
 
+    for mail in mails:
+        if mail["fromAddress"].lower() != "xflow@odense.dk":
+            continue
+
+        if mail["subject"] != "Ansøgning om hjælpemiddel, forbrugsgode eller boligindretning":
+            continue
+        
+
 
 async def process_workqueue(workqueue: Workqueue):
     logger = logging.getLogger(__name__)
