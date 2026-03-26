@@ -99,26 +99,28 @@ def opret_forløb(borger: dict) -> None:
     """Opret forløb i Nexus for given borger."""
     
     nexus.forløb.opret_forløb(borger, "Ældre og sundhedsfagligt grundforløb", "Sag SOFF: Afgørelse - Lov om social service")
-    nexus.forløb.opret_forløb(borger, "Ældre og sundhedsfagligt grundforløb", "Sag SOFF: Hjælpemidler, forbrugsgoder, boligindretning m.v.")
+    nexus.forløb.opret_forløb(borger, "Ældre og sundhedsfagligt grundforløb", "Sag SOFF: Hjælpemidler, forbrugsgoder, boligindretning m.v.") # skal mappes
 
-def opret_skema(borger: dict, ansøgning: dict, matched_paragraffer: dict) -> None:
+def opret_skema_og_opgave(borger: dict, ansøgning: dict, matched_paragraffer: dict, matched_forløb: list[dict]) -> None:
     """Opret skema i Nexus for given borger baseret på ansøgning og matchede paragraffer."""
     for matched_paragraph in matched_paragraffer:
-        print({', '.join(matched_paragraffer[matched_paragraph])})
+        forløbsinfo = next((row for row in matched_forløb if row.get("Paragraf") == matched_paragraph), None)
+
         # Formatter dato
         dt = datetime.now(ZoneInfo("Europe/Copenhagen")).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
         dato = dt
-        nexus.skemaer.opret_komplet_skema(
+        skema = nexus.skemaer.opret_komplet_skema(
             borger=borger,
-            skematype_navn="Henvendelse - Hjælpemidler, forbrugsgoder, boligindretning m.v.",
+            skematype_navn=forløbsinfo["Skema"],
             grundforløb="Ældre og sundhedsfagligt grundforløb",
-            forløb="Sag SOFF: Hjælpemidler, forbrugsgoder, boligindretning m.v.",
+            forløb=forløbsinfo["Forløb"],
             handling_navn="Udfyldt",
+            tag_navn=forløbsinfo["Tag"],
             data = {
                 "Henvendelse modtaget" : dato,
-                "Ansvarlig myndighedsorganisation" : "Indgangen",
+                "Ansvarlig myndighedsorganisation" : "Indgangen", # mangler stadig info her?
                 "Kilde som henvendelses kommer fra" : "Borger",
                 "Er borgeren indforstået med henvendelsen?" : "Ja",
                 "Henvendelsesårsag" : (
@@ -128,6 +130,14 @@ def opret_skema(borger: dict, ansøgning: dict, matched_paragraffer: dict) -> No
                     f"{ansøgning['funktionsnedsaettelse_block']}"
                 )
             }
+        )
+        nexus.opgaver.opret_opgave(
+            objekt=skema,
+            opgave_type=forløbsinfo["Opgavetype"],
+            titel= f"{', '.join(matched_paragraffer[matched_paragraph])}",
+            ansvarlig_organisation=forløbsinfo["Ansvarlig organisation"], 
+            start_dato=datetime.now().date(),
+            forfald_dato=datetime.now().date() if matched_paragraffer[matched_paragraph] == "§112 kontinens" else None,
         )
 
 
@@ -180,6 +190,10 @@ async def process_workqueue(workqueue: Workqueue):
 
                 ansoegning = parse_ansoegning(pdf_text, attachments)
                 matched_paragraffer = match_regler(ansoegning["hjaelpemidler"], regler)
+
+                # Filter forløb to only rows whose paragraf was matched
+                matched_forløb = [row for row in forløb if row.get("Paragraf") in matched_paragraffer]
+
                 logger.info(f"Parsed ansøgning: {ansoegning}")
                 logger.info(f"Matched paragraffer: {matched_paragraffer}")
 
@@ -191,7 +205,7 @@ async def process_workqueue(workqueue: Workqueue):
                 borger = nexus.borgere.hent_borger(os.environ.get("TEST_CPR"))  # TODO: Fjern test CPR og hent rigtigt fra søg_borger
 
                 # Opret skema
-                opret_skema(borger, ansoegning, matched_paragraffer)
+                opret_skema_og_opgave(borger, ansoegning, matched_paragraffer, matched_forløb)
 
             except Exception as e:
                 logger.error(f"Error processing item: {data}. Error: {e}")
