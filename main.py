@@ -142,6 +142,36 @@ def opret_skema_og_opgave(borger: dict, ansøgning: dict, matched_paragraffer: d
             forfald_dato=datetime.now().date() if matched_paragraffer[matched_paragraph] == "§112 kontinens" else None,
         )
 
+def tilknyt_besked_til_forløb(borger: dict, matched_forløb: list[dict]) -> None:
+    aktivitetsliste = nexus.aktivitetslister.hent_aktivitetsliste(navn="Fællespostkasse - Hjælpemidler", organisation=None, medarbejder=None)
+    for aktivitet in aktivitetsliste:
+        # find kun roboa mail - kun for test
+        if aktivitet["sender"] != "Robot A":
+            continue
+
+        email = nexus.nexus_client.get(aktivitet["_links"]["referencedObject"]["href"]).json()
+        # Find cpr:
+        cpr_match = re.search(
+            r"((?:(?:31(?:0[13578]|1[02])|(?:30|29)(?:0[13-9]|1[0-2])|(?:0[1-9]|1[0-9]|2[0-8])(?:0[1-9]|1[0-2]))[0-9]{2}\s?-?\s?[0-9]|290200\s?-?\s?[4-9]|2902(?:(?!00)[02468][048]|[13579][26])\s?-?\s?[0-9])[0-9]{3}|000000\s?-?\s?0000$)",
+            email.get("body", "")
+        )
+
+        # Find match mellem cpr i email og borgerens cpr. Hvis match, så tilknyt besked til forløb
+        # if cpr_match.group(1) != borger["patientIdentifier"]["identifier"]:
+        #     continue
+
+        prototype = nexus.nexus_client.get(email["_links"]["self"]["href"]).json()
+        email = nexus.nexus_client.get(f"{email['_links']['self']['href']}?patientId={borger['id']}").json()
+        tilgængelig_pathways = nexus.nexus_client.get(f"{email['pathwayAssociation']['_links']['availablePathwayAssociation']['href']}?subjectId=00000000-0000-0000-0000-000000000000").json()
+        tilgængelig_pathways = next((p for p in tilgængelig_pathways if p["patientPathwayPlacement"]["name"] == "Ældre og sundhedsfagligt grundforløb"), None)
+        tilgængelig_pathways = next((p for p in tilgængelig_pathways["children"] if p["patientPathwayPlacement"]["name"] in [f["Forløb"] for f in matched_forløb]), None)
+        if prototype["pathwayAssociation"] is None:
+            prototype["pathwayAssociation"] = {}
+            if "placement" not in prototype["pathwayAssociation"]:
+                prototype["pathwayAssociation"]["placement"] = tilgængelig_pathways["patientPathwayPlacement"]
+        print("hej")
+        nexus.nexus_client.post(email["_links"]["accept"]["href"], json=prototype)
+
 
 async def populate_queue(workqueue: Workqueue):
     logger = logging.getLogger(__name__)
@@ -196,18 +226,19 @@ async def process_workqueue(workqueue: Workqueue):
                 # Filter forløb to only rows whose paragraf was matched
                 matched_forløb = [row for row in forløb if row.get("Paragraf") in matched_paragraffer]
 
-                logger.info(f"Parsed ansøgning: {ansoegning}")
-                logger.info(f"Matched paragraffer: {matched_paragraffer}")
 
                 # Søg efter borger i Nexus ved CPR-nummer. Hvis borger ikke findes, så opret i nexus
                 # borger = søg_borger(ansoegning["cpr"], ansoegning["telefonnummer"])
 
                 borger = nexus.borgere.hent_borger(os.environ.get("TEST_CPR"))  # TODO: Fjern test CPR og hent rigtigt fra søg_borger
                 # Opret forløb
-                opret_forløb(borger, matched_forløb)
+                # opret_forløb(borger, matched_forløb)
 
-                # Opret skema
-                opret_skema_og_opgave(borger, ansoegning, matched_paragraffer, matched_forløb)
+                # # Opret skema
+                # opret_skema_og_opgave(borger, ansoegning, matched_paragraffer, matched_forløb)
+
+                # Tilknyt besked til forløb
+                tilknyt_besked_til_forløb(borger, matched_forløb)
 
             except Exception as e:
                 logger.error(f"Error processing item: {data}. Error: {e}")
