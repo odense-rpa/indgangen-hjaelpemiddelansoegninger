@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import sys
 import argparse
 import os
 from datetime import datetime
@@ -13,7 +12,7 @@ import fitz  # pymupdf
 from automation_server_client import AutomationServer, Workqueue, WorkItemError, Credential, WorkItemStatus
 from odk_tools.tracking import Tracker
 
-from services.mail_service import MailService, extract_text_from_html, parse_email_data
+from services.mail_service import MailService
 from process.config import load_excel_mapping, get_excel_mapping
 from kmd_nexus_client import NexusClientManager
 
