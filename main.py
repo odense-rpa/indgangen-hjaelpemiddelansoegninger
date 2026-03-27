@@ -95,11 +95,13 @@ def søg_borger(cpr: str, telefonnummer: str = None) -> dict:
         logging.error(f"Error searching for borger with CPR {cpr}: {e}")
         return None
 
-def opret_forløb(borger: dict) -> None:
+def opret_forløb(borger: dict, matched_forløb: list[dict]) -> None:
     """Opret forløb i Nexus for given borger."""
     
     nexus.forløb.opret_forløb(borger, "Ældre og sundhedsfagligt grundforløb", "Sag SOFF: Afgørelse - Lov om social service")
-    nexus.forløb.opret_forløb(borger, "Ældre og sundhedsfagligt grundforløb", "Sag SOFF: Hjælpemidler, forbrugsgoder, boligindretning m.v.") # skal mappes
+    for forløbsinfo in matched_forløb:
+        nexus.forløb.opret_forløb(borger, "Ældre og sundhedsfagligt grundforløb", forløbsinfo["Forløb"]) # skal mappes
+        
 
 def opret_skema_og_opgave(borger: dict, ansøgning: dict, matched_paragraffer: dict, matched_forløb: list[dict]) -> None:
     """Opret skema i Nexus for given borger baseret på ansøgning og matchede paragraffer."""
@@ -200,9 +202,9 @@ async def process_workqueue(workqueue: Workqueue):
                 # Søg efter borger i Nexus ved CPR-nummer. Hvis borger ikke findes, så opret i nexus
                 # borger = søg_borger(ansoegning["cpr"], ansoegning["telefonnummer"])
 
-                # Opret forløb
-                # opret_forløb(borger)
                 borger = nexus.borgere.hent_borger(os.environ.get("TEST_CPR"))  # TODO: Fjern test CPR og hent rigtigt fra søg_borger
+                # Opret forløb
+                opret_forløb(borger, matched_forløb)
 
                 # Opret skema
                 opret_skema_og_opgave(borger, ansoegning, matched_paragraffer, matched_forløb)
