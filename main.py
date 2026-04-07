@@ -54,14 +54,12 @@ def parse_ansoegning(pdf_text: str, attachments: list) -> dict:
         hjaelpemidler_match.group(1).strip() if hjaelpemidler_match else None
     )
 
-    antal_filer = len(attachments) if attachments else 0
 
     return {
         "cpr": cpr,
         "telefonnummer": telefonnummer,
         "funktionsnedsaettelse_block": funktionsnedsaettelse_block,
         "hjaelpemidler": hjaelpemidler,
-        "antal_filer": antal_filer,
     }
 
 
@@ -157,7 +155,6 @@ def opret_skema_og_opgave(
                 "Er borgeren indforstået med henvendelsen?": "Ja",
                 "Henvendelsesårsag": (
                     f"Fundne følgende hjælpemidler: {', '.join(matched_paragraffer[matched_paragraph])}\n"
-                    f"Fundet antal filer i mail: {ansøgning['antal_filer']}\n"
                     f"{datetime.now().date().strftime('%d-%m-%Y')} //Robotten Tyra\n"
                     f"{ansøgning['funktionsnedsaettelse_block']}"
                 ),
