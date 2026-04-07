@@ -625,6 +625,43 @@ class MailService:
             logger.error(f"Error getting message body: {e}")
             return {}
 
+    async def delete_message(self, mailbox_address: str, message_id: str) -> bool:
+        """
+        Move a message to the Deleted Items (Slettet post) folder.
+
+        Args:
+            mailbox_address: Email address of the mailbox
+            message_id: ID of the message to delete
+
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.graph_client:
+            raise Exception("Graph client not initialized")
+
+        try:
+            logger.debug(f"Moving message {message_id} to Deleted Items in {mailbox_address}")
+
+            from msgraph.generated.users.item.messages.item.move.move_post_request_body import (
+                MovePostRequestBody,
+            )
+
+            body = MovePostRequestBody()
+            body.destination_id = "deleteditems"
+
+            await (
+                self._get_messages_request_builder(mailbox_address)
+                .by_message_id(message_id)
+                .move.post(body)
+            )
+
+            logger.info(f"Successfully moved message {message_id} to Deleted Items in {mailbox_address}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error deleting message {message_id}: {e}")
+            return False
+
     async def move_message(
         self, mailbox_address: str, message_id: str, destination_folder_id: str
     ) -> bool:

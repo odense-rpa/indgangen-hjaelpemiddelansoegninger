@@ -277,22 +277,22 @@ async def process_workqueue(workqueue: Workqueue):
                     (a for a in attachments if a[0] == target_name), None
                 )
 
-                if pdf_attachment is None:
-                    raise WorkItemError(
-                        f"Attachment '{target_name}' not found in message {data['id']}"
-                    )
+                # if pdf_attachment is None:
+                #     raise WorkItemError(
+                #         f"Attachment '{target_name}' not found in message {data['id']}"
+                #     )
 
-                _, pdf_path, _ = pdf_attachment
-                with fitz.open(pdf_path) as pdf:
-                    pdf_text = "\n".join(page.get_text() for page in pdf)
+                # _, pdf_path, _ = pdf_attachment
+                # with fitz.open(pdf_path) as pdf:
+                #     pdf_text = "\n".join(page.get_text() for page in pdf)
 
-                ansoegning = parse_ansoegning(pdf_text, attachments)
-                matched_paragraffer = match_regler(ansoegning["hjaelpemidler"], regler)
+                # ansoegning = parse_ansoegning(pdf_text, attachments)
+                # matched_paragraffer = match_regler(ansoegning["hjaelpemidler"], regler)
 
                 # Filter forløb to only rows whose paragraf was matched
-                matched_forløb = [
-                    row for row in forløb if row.get("Paragraf") in matched_paragraffer
-                ]
+                # matched_forløb = [
+                #     row for row in forløb if row.get("Paragraf") in matched_paragraffer
+                # ]
 
                 # Søg efter borger i Nexus ved CPR-nummer. Hvis borger ikke findes, så opret i nexus
                 # borger = søg_borger(ansoegning["cpr"], ansoegning["telefonnummer"])
@@ -307,7 +307,12 @@ async def process_workqueue(workqueue: Workqueue):
                 # opret_skema_og_opgave(borger, ansoegning, matched_paragraffer, matched_forløb)
 
                 # Tilknyt besked til forløb
-                tilknyt_besked_til_forløb(borger, matched_forløb)
+                # tilknyt_besked_til_forløb(borger, matched_forløb)
+
+                # Slet mail
+                await mail_service.delete_message("hjaelpemidler@odense.dk", data["id"])
+
+                tracker.track_task(process_name=proces_navn)
 
             except Exception as e:
                 logger.error(f"Error processing item: {data}. Error: {e}")
