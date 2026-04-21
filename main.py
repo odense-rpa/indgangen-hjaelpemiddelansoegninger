@@ -54,12 +54,15 @@ def parse_ansoegning(pdf_text: str, attachments: list) -> dict:
         hjaelpemidler_match.group(1).strip() if hjaelpemidler_match else None
     )
 
+    antal_filer = len(attachments) if attachments else 0
+
 
     return {
         "cpr": cpr,
         "telefonnummer": telefonnummer,
         "funktionsnedsaettelse_block": funktionsnedsaettelse_block,
         "hjaelpemidler": hjaelpemidler,
+        "antal_filer": antal_filer,
     }
 
 
@@ -96,7 +99,7 @@ def søg_borger(cpr: str, telefonnummer: str = None) -> dict:
         return None
 
     try:
-        findes_borger = nexus.borgere.søg_borgere(cpr=cpr)
+        findes_borger = nexus.borgere.søg_borgere(søgning=cpr)
         if not findes_borger:
             # Hvis borger ikke findes, så opret i nexus
             borger = nexus.borgere.opret_borger(cpr)
@@ -150,11 +153,12 @@ def opret_skema_og_opgave(
             tag_navn=forløbsinfo["Tag"],
             data={
                 "Henvendelse modtaget": dato,
-                "Ansvarlig myndighedsorganisation": "Indgangen",  # mangler stadig info her?
+                "Ansvarlig myndighedsorganisation": forløbsinfo["Ansvarlig myndighedsorganisation"],  # mangler stadig info her?
                 "Kilde som henvendelses kommer fra": "Borger",
                 "Er borgeren indforstået med henvendelsen?": "Ja",
                 "Henvendelsesårsag": (
                     f"Fundne følgende hjælpemidler: {', '.join(matched_paragraffer[matched_paragraph])}\n"
+                    f"Fundet antal filer i mail: {ansøgning['antal_filer']}\n"
                     f"{datetime.now().date().strftime('%d-%m-%Y')} //Robotten Tyra\n"
                     f"{ansøgning['funktionsnedsaettelse_block']}"
                 ),
@@ -177,22 +181,23 @@ def tilknyt_besked_til_forløb(borger: dict, matched_forløb: list[dict]) -> Non
         navn="Fællespostkasse - Hjælpemidler", organisation=None, medarbejder=None
     )
     for aktivitet in aktivitetsliste:
-        # find kun roboa mail - kun for test
-        if aktivitet["sender"] != "Robot A":
-            continue
-
         email = nexus.nexus_client.get(
             aktivitet["_links"]["referencedObject"]["href"]
         ).json()
+        if email["sender"]["name"] != "svc_Xflow_O365":
+            continue
+
         # Find cpr:
         cpr_match = re.search(
             r"((?:(?:31(?:0[13578]|1[02])|(?:30|29)(?:0[13-9]|1[0-2])|(?:0[1-9]|1[0-9]|2[0-8])(?:0[1-9]|1[0-2]))[0-9]{2}\s?-?\s?[0-9]|290200\s?-?\s?[4-9]|2902(?:(?!00)[02468][048]|[13579][26])\s?-?\s?[0-9])[0-9]{3}|000000\s?-?\s?0000$)",
             email.get("body", ""),
         )
+        if cpr_match is None:
+            continue
 
         # Find match mellem cpr i email og borgerens cpr. Hvis match, så tilknyt besked til forløb
-        # if cpr_match.group(1) != borger["patientIdentifier"]["identifier"]:
-        #     continue
+        if cpr_match.group(1) != borger["patientIdentifier"]["identifier"]:
+            continue
 
         prototype = nexus.nexus_client.get(email["_links"]["self"]["href"]).json()
         email = nexus.nexus_client.get(
@@ -225,7 +230,6 @@ def tilknyt_besked_til_forløb(borger: dict, matched_forløb: list[dict]) -> Non
                 prototype["pathwayAssociation"]["placement"] = tilgængelig_pathways[
                     "patientPathwayPlacement"
                 ]
-        print("hej")
         nexus.nexus_client.post(email["_links"]["accept"]["href"], json=prototype)
 
 
@@ -249,8 +253,8 @@ async def populate_queue(workqueue: Workqueue):
         ):
             continue
 
-        if "RPA TEST" not in mail["body_preview"]:
-            continue
+        # if "RPA TEST" not in mail["body_preview"]:
+        #     continue
 
         workqueue.add_item(data={"id": mail["id"]}, reference=mail["id"])
 
@@ -277,37 +281,37 @@ async def process_workqueue(workqueue: Workqueue):
                     (a for a in attachments if a[0] == target_name), None
                 )
 
-                # if pdf_attachment is None:
-                #     raise WorkItemError(
-                #         f"Attachment '{target_name}' not found in message {data['id']}"
-                #     )
+                if pdf_attachment is None:
+                    raise WorkItemError(
+                        f"Attachment '{target_name}' not found in message {data['id']}"
+                    )
 
-                # _, pdf_path, _ = pdf_attachment
-                # with fitz.open(pdf_path) as pdf:
-                #     pdf_text = "\n".join(page.get_text() for page in pdf)
+                _, pdf_path, _ = pdf_attachment
+                with fitz.open(pdf_path) as pdf:
+                    pdf_text = "\n".join(page.get_text() for page in pdf)
 
-                # ansoegning = parse_ansoegning(pdf_text, attachments)
-                # matched_paragraffer = match_regler(ansoegning["hjaelpemidler"], regler)
+                ansoegning = parse_ansoegning(pdf_text, attachments)
+                matched_paragraffer = match_regler(ansoegning["hjaelpemidler"], regler)
 
                 # Filter forløb to only rows whose paragraf was matched
-                # matched_forløb = [
-                #     row for row in forløb if row.get("Paragraf") in matched_paragraffer
-                # ]
+                matched_forløb = [
+                    row for row in forløb if row.get("Paragraf") in matched_paragraffer
+                ]
 
                 # Søg efter borger i Nexus ved CPR-nummer. Hvis borger ikke findes, så opret i nexus
-                # borger = søg_borger(ansoegning["cpr"], ansoegning["telefonnummer"])
+                borger = søg_borger(ansoegning["cpr"], ansoegning["telefonnummer"])
 
-                borger = nexus.borgere.hent_borger(
-                    os.environ.get("TEST_CPR")
-                )  # TODO: Fjern test CPR og hent rigtigt fra søg_borger
+                # borger = nexus.borgere.hent_borger(
+                #     os.environ.get("TEST_CPR")
+                # )  # TODO: Fjern test CPR og hent rigtigt fra søg_borger
                 # Opret forløb
-                # opret_forløb(borger, matched_forløb)
+                opret_forløb(borger, matched_forløb)
 
                 # # Opret skema
                 # opret_skema_og_opgave(borger, ansoegning, matched_paragraffer, matched_forløb)
 
                 # Tilknyt besked til forløb
-                # tilknyt_besked_til_forløb(borger, matched_forløb)
+                tilknyt_besked_til_forløb(borger, matched_forløb)
 
                 # Slet mail
                 await mail_service.delete_message("hjaelpemidler@odense.dk", data["id"])
