@@ -130,7 +130,7 @@ def opret_forløb(borger: dict, matched_forløb: list[dict]) -> None:
 
 
 def opret_skema_og_opgave(
-    borger: dict, ansøgning: dict, matched_paragraffer: dict, matched_forløb: list[dict]
+    borger: dict, ansøgning: dict, matched_paragraffer: dict, matched_forløb: list[dict], received_date_time: str = None
 ) -> None:
     """Opret skema i Nexus for given borger baseret på ansøgning og matchede paragraffer."""
     for matched_paragraph in matched_paragraffer:
@@ -140,9 +140,12 @@ def opret_skema_og_opgave(
         )
 
         # Formatter dato
-        dt = datetime.now(ZoneInfo("Europe/Copenhagen")).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        raw_received = received_date_time
+        dt = (
+            datetime.fromisoformat(raw_received).astimezone(ZoneInfo("Europe/Copenhagen"))
+            if raw_received
+            else datetime.now(ZoneInfo("Europe/Copenhagen"))
+        ).replace(hour=0, minute=0, second=0, microsecond=0)
         dato = dt
         skema = nexus.skemaer.opret_komplet_skema(
             borger=borger,
@@ -256,7 +259,10 @@ async def populate_queue(workqueue: Workqueue):
         # if "RPA TEST" not in mail["body_preview"]:
         #     continue
 
-        workqueue.add_item(data={"id": mail["id"]}, reference=mail["id"])
+        workqueue.add_item(
+            data={"id": mail["id"], "received_date_time": mail["received_date_time"].isoformat() if mail["received_date_time"] else None},
+            reference=mail["id"]
+        )
 
 
 async def process_workqueue(workqueue: Workqueue):
@@ -308,7 +314,7 @@ async def process_workqueue(workqueue: Workqueue):
                 opret_forløb(borger, matched_forløb)
 
                 # # Opret skema
-                # opret_skema_og_opgave(borger, ansoegning, matched_paragraffer, matched_forløb)
+                opret_skema_og_opgave(borger, ansoegning, matched_paragraffer, matched_forløb, data.get("received_date_time"))
 
                 # Tilknyt besked til forløb
                 tilknyt_besked_til_forløb(borger, matched_forløb)
