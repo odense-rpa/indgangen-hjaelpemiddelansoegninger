@@ -103,10 +103,10 @@ def søg_borger(cpr: str, telefonnummer: str = None) -> dict:
         if not findes_borger:
             # Hvis borger ikke findes, så opret i nexus
             borger = nexus.borgere.opret_borger(cpr)
-            # Opdater telefonnummer på borgeren
-            prototype = nexus.nexus_client.get(borger["_links"]["self"]["href"])
-            prototype["homeTelephone"] = telefonnummer
-            nexus.nexus_client.put(borger["_links"]["update"]["href"], json=prototype)
+            # Opdater telefonnummer på borgeren - SAT PÅ PAUSE MIDLERTIDIGT. DÅRLIG KODE
+            # prototype = nexus.nexus_client.get(borger["_links"]["self"]["href"])
+            # prototype["homeTelephone"] = telefonnummer
+            # nexus.nexus_client.put(borger["_links"]["update"]["href"], json=prototype)
 
         borger = nexus.borgere.hent_borger(cpr)
         return borger
@@ -256,8 +256,6 @@ async def populate_queue(workqueue: Workqueue):
         ):
             continue
 
-        # if "RPA TEST" not in mail["body_preview"]:
-        #     continue
 
         workqueue.add_item(
             data={"id": mail["id"], "received_date_time": mail["received_date_time"].isoformat() if mail["received_date_time"] else None},
@@ -307,9 +305,6 @@ async def process_workqueue(workqueue: Workqueue):
                 # Søg efter borger i Nexus ved CPR-nummer. Hvis borger ikke findes, så opret i nexus
                 borger = søg_borger(ansoegning["cpr"], ansoegning["telefonnummer"])
 
-                # borger = nexus.borgere.hent_borger(
-                #     os.environ.get("TEST_CPR")
-                # )  # TODO: Fjern test CPR og hent rigtigt fra søg_borger
                 # Opret forløb
                 opret_forløb(borger, matched_forløb)
 
