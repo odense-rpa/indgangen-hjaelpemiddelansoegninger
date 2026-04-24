@@ -256,9 +256,18 @@ async def populate_queue(workqueue: Workqueue):
         ):
             continue
 
+        # Find cpr på ansøger
+        cpr_match = re.search(r"CPR-nummer:?\s*(\d{6}-?\d{4})", mail.get("body_preview", ""), re.IGNORECASE)
+        cpr = cpr_match.group(1).strip() if cpr_match else None
+
+        workqueue_data ={
+            "id": mail["id"],
+            "received_date_time": mail["received_date_time"].isoformat() if mail["received_date_time"] else None,
+            "cpr": cpr  
+        }
 
         workqueue.add_item(
-            data={"id": mail["id"], "received_date_time": mail["received_date_time"].isoformat() if mail["received_date_time"] else None},
+            data=workqueue_data,
             reference=mail["id"]
         )
 
