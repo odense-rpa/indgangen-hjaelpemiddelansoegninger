@@ -311,6 +311,9 @@ async def process_workqueue(workqueue: Workqueue):
                     row for row in forløb if row.get("Paragraf") in matched_paragraffer
                 ]
 
+                if matched_forløb is None or len(matched_forløb) == 0:
+                    continue  # Hvis ingen paragraffer matchede, så skip denne ansøgning
+
                 # Søg efter borger i Nexus ved CPR-nummer. Hvis borger ikke findes, så opret i nexus
                 borger = søg_borger(ansoegning["cpr"], ansoegning["telefonnummer"])
 
