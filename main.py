@@ -103,10 +103,10 @@ def søg_borger(cpr: str, telefonnummer: str = None) -> dict:
         if not findes_borger:
             # Hvis borger ikke findes, så opret i nexus
             borger = nexus.borgere.opret_borger(cpr)
-            # Opdater telefonnummer på borgeren - SAT PÅ PAUSE MIDLERTIDIGT. DÅRLIG KODE
-            # prototype = nexus.nexus_client.get(borger["_links"]["self"]["href"])
-            # prototype["homeTelephone"] = telefonnummer
-            # nexus.nexus_client.put(borger["_links"]["update"]["href"], json=prototype)
+            if telefonnummer:
+                prototype = nexus.nexus_client.get(borger["_links"]["self"]["href"]).json()
+                prototype["homeTelephone"] = telefonnummer
+                nexus.nexus_client.put(borger["_links"]["update"]["href"], json=prototype)
 
         borger = nexus.borgere.hent_borger(cpr)
         return borger
