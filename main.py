@@ -288,11 +288,12 @@ async def process_workqueue(workqueue: Workqueue):
                     "hjaelpemidler@odense.dk", data["id"]
                 )
 
-                target_name = (
-                    "Ansoegning_om_hjaelpemiddel_forbrugsgode_eller_boligindretning.pdf"
-                )
+                target_name = [
+                    "Ansoegning_om_hjaelpemiddel_forbrugsgode_eller_boligindretning.pdf",
+                    "Ansoegning_om_hjaelpemiddel_forbrugsgode_eller_boligindretning_V2__under_udvikling.pdf"
+                ]
                 pdf_attachment = next(
-                    (a for a in attachments if a[0] == target_name), None
+                    (a for a in attachments if a[0] in target_name), None
                 )
 
                 if pdf_attachment is None:
