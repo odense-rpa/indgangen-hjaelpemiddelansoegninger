@@ -104,9 +104,14 @@ def søg_borger(cpr: str, telefonnummer: str = None) -> dict:
             # Hvis borger ikke findes, så opret i nexus
             borger = nexus.borgere.opret_borger(cpr)
             if telefonnummer:
+                normalized = telefonnummer.strip().replace(" ", "")
+                if normalized.startswith("+45"):
+                    normalized = normalized[3:]
+                elif normalized.startswith("0045"):
+                    normalized = normalized[4:]
                 borger = nexus.borgere.hent_borger(cpr) # for at få opdateret _links
                 prototype = nexus.nexus_client.get(borger["_links"]["self"]["href"]).json()
-                prototype["homeTelephone"] = telefonnummer
+                prototype["homeTelephone"] = normalized
                 nexus.nexus_client.put(borger["_links"]["update"]["href"], json=prototype)
 
         borger = nexus.borgere.hent_borger(cpr)
