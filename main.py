@@ -54,6 +54,9 @@ def parse_ansoegning(pdf_text: str, attachments: list) -> dict:
         hjaelpemidler_match.group(1).strip() if hjaelpemidler_match else None
     )
 
+    på_vegne_af_match = re.search(r"Ansøger du på vegne af en anden\?\n(.+)", pdf_text)
+    på_vegne_af = på_vegne_af_match.group(1).strip() if på_vegne_af_match else None
+
     antal_filer = len(attachments) if attachments else 0
 
 
@@ -62,6 +65,7 @@ def parse_ansoegning(pdf_text: str, attachments: list) -> dict:
         "telefonnummer": telefonnummer,
         "funktionsnedsaettelse_block": funktionsnedsaettelse_block,
         "hjaelpemidler": hjaelpemidler,
+        "på_vegne_af": på_vegne_af,
         "antal_filer": antal_filer,
     }
 
@@ -163,8 +167,8 @@ def opret_skema_og_opgave(
             data={
                 "Henvendelse modtaget": dato,
                 "Ansvarlig myndighedsorganisation": forløbsinfo["Ansvarlig myndighedsorganisation"],  # mangler stadig info her?
-                "Kilde som henvendelses kommer fra": "Borger",
-                "Er borgeren indforstået med henvendelsen?": "Ja",
+                "Kilde som henvendelses kommer fra": "Pårørende" if ansøgning.get("på_vegne_af", "").lower() == "ja" else "Borger",
+                "Er borgeren indforstået med henvendelsen?": "Uafklaret" if ansøgning.get("på_vegne_af", "").lower() == "ja" else "Ja",
                 "Henvendelsesårsag": (
                     f"Fundne følgende hjælpemidler: {', '.join(matched_paragraffer[matched_paragraph])}\n"
                     f"Fundet antal filer i mail: {ansøgning['antal_filer']}\n"
