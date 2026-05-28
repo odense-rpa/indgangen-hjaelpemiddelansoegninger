@@ -290,6 +290,7 @@ async def process_workqueue(workqueue: Workqueue):
 
                 target_name = [
                     "Ansoegning_om_hjaelpemiddel_forbrugsgode_eller_boligindretning.pdf",
+                    "Ansoegning_om_hjaelpemiddel_forbrugsgode_eller_boligindretning_.pdf", # ja det er rigtigt...
                     "Ansoegning_om_hjaelpemiddel_forbrugsgode_eller_boligindretning_V2__under_udvikling.pdf"
                 ]
                 pdf_attachment = next(
