@@ -167,8 +167,8 @@ def opret_skema_og_opgave(
             data={
                 "Henvendelse modtaget": dato,
                 "Ansvarlig myndighedsorganisation": forløbsinfo["Ansvarlig myndighedsorganisation"],  # mangler stadig info her?
-                "Kilde som henvendelses kommer fra": "Pårørende" if ansøgning.get("på_vegne_af", "").lower() == "ja" else "Borger",
-                "Er borgeren indforstået med henvendelsen?": "Uafklaret" if ansøgning.get("på_vegne_af", "").lower() == "ja" else "Ja",
+                "Kilde som henvendelses kommer fra": "Andre" if ansøgning.get("på_vegne_af", "").lower() == "ja" else "Borger",
+                "Er borgeren indforstået med henvendelsen?": "Ja",
                 "Henvendelsesårsag": (
                     f"Fundne følgende hjælpemidler: {', '.join(matched_paragraffer[matched_paragraph])}\n"
                     f"Fundet antal filer i mail: {ansøgning['antal_filer']}\n"
