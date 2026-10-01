@@ -183,9 +183,9 @@ def opret_skema_og_opgave(
             titel=f"{', '.join(matched_paragraffer[matched_paragraph])}",
             ansvarlig_organisation=forløbsinfo["Ansvarlig organisation"],
             start_dato=datetime.now().date(),
-            forfald_dato=datetime.now().date()
-            if matched_paragraffer[matched_paragraph] == "§112 kontinens"
-            else None,
+            forfald_dato=None
+            if matched_paragraph == "§112 kropsbårne"
+            else datetime.now().date(),
         )
 
 
