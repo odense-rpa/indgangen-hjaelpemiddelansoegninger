@@ -3,3 +3,7 @@
 input/
 test*
 *.pdf
+
+# Python-cachefiler
+__pycache__/
+*.py[cod]
